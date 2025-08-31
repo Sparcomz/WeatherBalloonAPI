@@ -1,6 +1,42 @@
 import { useEffect, useState, useRef } from "react";
 import Globe from "react-globe.gl";
 
+// Mapping function: altitude → nearest Open-Meteo pressure level
+function mapAltToPressure(altKm) {
+  const levels = [
+    { pressure: "1000hPa", alt: 0.11 },
+    { pressure: "975hPa",  alt: 0.32 },
+    { pressure: "950hPa",  alt: 0.50 },
+    { pressure: "925hPa",  alt: 0.80 },
+    { pressure: "900hPa",  alt: 1.0 },
+    { pressure: "850hPa",  alt: 1.5 },
+    { pressure: "800hPa",  alt: 1.9 },
+    { pressure: "700hPa",  alt: 3.0 },
+    { pressure: "600hPa",  alt: 4.2 },
+    { pressure: "500hPa",  alt: 5.6 },
+    { pressure: "400hPa",  alt: 7.2 },
+    { pressure: "300hPa",  alt: 9.2 },
+    { pressure: "250hPa",  alt: 10.4 },
+    { pressure: "200hPa",  alt: 11.8 },
+    { pressure: "150hPa",  alt: 13.5 },
+    { pressure: "100hPa",  alt: 15.8 },
+    { pressure: "70hPa",   alt: 17.7 },
+    { pressure: "50hPa",   alt: 19.3 },
+    { pressure: "30hPa",   alt: 22.0 }
+  ];
+
+  let nearest = levels[0];
+  let minDiff = Math.abs(altKm - levels[0].alt);
+  for (const lvl of levels) {
+    const diff = Math.abs(altKm - lvl.alt);
+    if (diff < minDiff) {
+      nearest = lvl;
+      minDiff = diff;
+    }
+  }
+  return nearest.pressure;
+}
+
 function App() {
   const globeEl = useRef();
   const [balloons, setBalloons] = useState([]);
@@ -31,12 +67,15 @@ function App() {
         }
       }
 
-      // ---- Build arcs ----
-      const colors = ["red","blue","green","orange","purple","cyan","magenta","lime","pink"];
+      // ---- Build arcs using bright palette ----
       const arcs = [];
+      const palette = [
+        "#fbbf24","#3b82f6","#22c55e","#f97316",
+        "#a855f7","#06b6d4","#ec4899","#84cc16","#f9a8d4"
+      ];
 
       Object.entries(grouped).forEach(([idx, track]) => {
-        const color = colors[idx % colors.length];
+        const color = palette[idx % palette.length]; 
         for (let j = 1; j < track.length; j++) {
           arcs.push({
             startLat: track[j - 1].lat,
@@ -91,21 +130,26 @@ function App() {
   // ---- Handler: enrich arc on click ----
   const handleArcClick = async (arc) => {
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${arc.endLat}&longitude=${arc.endLng}&current_weather=true`;
+      const pressure = mapAltToPressure(arc.alt);
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${arc.endLat}&longitude=${arc.endLng}&hourly=windspeed_${pressure},winddirection_${pressure}&timezone=UTC`;
       const res = await fetch(url);
       const data = await res.json();
 
-      if (data.current_weather) {
+      if (data.hourly) {
+        const ws = data.hourly[`windspeed_${pressure}`][0];
+        const wd = data.hourly[`winddirection_${pressure}`][0];
+
         arc.label = `
           <div style="background:white;color:black;padding:6px;border-radius:6px;
                       box-shadow:0 2px 6px rgba(0,0,0,0.3);font-size:12px">
             <b>Balloon #${arc.balloonId}</b><br/>
             ${arc.hour}h ago<br/>
             Alt: ${arc.alt?.toFixed(1)} km<br/>
-            Wind: ${data.current_weather.windspeed} km/h<br/>
-            Dir: ${data.current_weather.winddirection}°
+            Pressure Level: ${pressure}<br/>
+            Wind: ${ws} km/h<br/>
+            Dir: ${wd}°
           </div>`;
-        arc.stroke = 0.6; // thicker to show enriched
+        arc.stroke = 0.6;
         setBalloons(prev => [...prev]);
       }
     } catch (err) { console.log("Arc weather fetch failed", err); }
@@ -114,25 +158,30 @@ function App() {
   // ---- Handler: enrich point on click ----
   const handlePointClick = async (point) => {
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${point.lat}&longitude=${point.lon}&current_weather=true`;
+      const pressure = mapAltToPressure(point.alt);
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${point.lat}&longitude=${point.lon}&hourly=windspeed_${pressure},winddirection_${pressure}&timezone=UTC`;
       const res = await fetch(url);
       const data = await res.json();
 
-      if (data.current_weather) {
+      if (data.hourly) {
+        const ws = data.hourly[`windspeed_${pressure}`][0];
+        const wd = data.hourly[`winddirection_${pressure}`][0];
+
         point.label = `
           <div style="background:white;color:black;padding:6px;border-radius:6px;
                       box-shadow:0 2px 6px rgba(0,0,0,0.3);font-size:12px">
             <b>Balloon #${point.balloonId}</b><br/>
-            Altitude: ${point.alt?.toFixed(1)} km<br/>
-            Wind: ${data.current_weather.windspeed} km/h<br/>
-            Direction: ${data.current_weather.winddirection}°
+            Alt: ${point.alt?.toFixed(1)} km<br/>
+            Pressure Level: ${pressure}<br/>
+            Wind: ${ws} km/h<br/>
+            Dir: ${wd}°
           </div>`;
         setCurrentBalloons(prev => [...prev]);
       }
     } catch (err) { console.log("Point weather fetch failed", err); }
   };
 
-  // Center on load
+  // ---- Center on load ----
   useEffect(() => {
     if (globeEl.current) {
       globeEl.current.pointOfView({lat:20,lng:0,altitude:2.5});
@@ -164,9 +213,9 @@ function App() {
         pointLat={d=>d.lat}
         pointLng={d=>d.lon}
         pointAltitude={0.01}
-        pointColor={()=>"gold"}
+        pointColor={()=>"#ff0000ff"}
         pointLabel={d=>d.label}
-        pointRadius={0.6}
+        pointRadius={0.5}
         pointResolution={12}
         onPointClick={handlePointClick}
       />
