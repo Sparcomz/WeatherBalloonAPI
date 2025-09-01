@@ -4,25 +4,25 @@ import Globe from "react-globe.gl";
 // ---- Mapping function: altitude → nearest Open-Meteo pressure level ----
 function mapAltToPressure(altKm) {
   const levels = [
-    { pressure: "1000hPa", alt: 0.11 },
-    { pressure: "975hPa",  alt: 0.32 },
-    { pressure: "950hPa",  alt: 0.50 },
-    { pressure: "925hPa",  alt: 0.80 },
-    { pressure: "900hPa",  alt: 1.0 },
-    { pressure: "850hPa",  alt: 1.5 },
-    { pressure: "800hPa",  alt: 1.9 },
-    { pressure: "700hPa",  alt: 3.0 },
-    { pressure: "600hPa",  alt: 4.2 },
-    { pressure: "500hPa",  alt: 5.6 },
-    { pressure: "400hPa",  alt: 7.2 },
-    { pressure: "300hPa",  alt: 9.2 },
-    { pressure: "250hPa",  alt: 10.4 },
-    { pressure: "200hPa",  alt: 11.8 },
-    { pressure: "150hPa",  alt: 13.5 },
-    { pressure: "100hPa",  alt: 15.8 },
-    { pressure: "70hPa",   alt: 17.7 },
-    { pressure: "50hPa",   alt: 19.3 },
-    { pressure: "30hPa",   alt: 22.0 }
+    { pressure: "1000 hPa", alt: 0.11 },
+    { pressure: "975 hPa",  alt: 0.32 },
+    { pressure: "950 hPa",  alt: 0.50 },
+    { pressure: "925 hPa",  alt: 0.80 },
+    { pressure: "900 hPa",  alt: 1.0 },
+    { pressure: "850 hPa",  alt: 1.5 },
+    { pressure: "800 hPa",  alt: 1.9 },
+    { pressure: "700 hPa",  alt: 3.0 },
+    { pressure: "600 hPa",  alt: 4.2 },
+    { pressure: "500 hPa",  alt: 5.6 },
+    { pressure: "400 hPa",  alt: 7.2 },
+    { pressure: "300 hPa",  alt: 9.2 },
+    { pressure: "250 hPa",  alt: 10.4 },
+    { pressure: "200 hPa",  alt: 11.8 },
+    { pressure: "150 hPa",  alt: 13.5 },
+    { pressure: "100 hPa",  alt: 15.8 },
+    { pressure: "70 hPa",   alt: 17.7 },
+    { pressure: "50 hPa",   alt: 19.3 },
+    { pressure: "30 hPa",   alt: 22.0 }
   ];
 
   let nearest = levels[0];
