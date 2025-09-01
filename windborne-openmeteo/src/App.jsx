@@ -55,7 +55,10 @@ function App() {
       // ---- Load last 24 hours of arcs ----
       for (let i = 0; i <= 23; i++) {
         try {
-          const url = `/api/windborne/${String(i).padStart(2, "0")}.json`;
+          const isDev = import.meta.env.DEV;
+          const url = isDev 
+            ? `/api/windborne/${String(i).padStart(2, "0")}.json`
+            : `/api/windborne?file=${String(i).padStart(2, "0")}`;
           const res = await fetch(url);
           const data = await res.json();
 
@@ -108,7 +111,10 @@ function App() {
 
       // ---- Fetch current balloons (00.json) ----
       try {
-        const resNow = await fetch(`/api/windborne/00.json`);
+        const isDev = import.meta.env.DEV;
+        const resNow = await fetch(isDev 
+          ? `/api/windborne/00.json`
+          : `/api/windborne?file=00`);
         const latest = await resNow.json();
         if (Array.isArray(latest)) {
           const curr = latest.map((p, idx) => ({
