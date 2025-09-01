@@ -261,7 +261,7 @@ function App() {
       >
         <h3 style={{ margin: "0 0 6px 0", fontSize: "14px" }}>🎈 WindBorne Balloon Tracker</h3>
         <p style={{ margin: "0 0 8px 0", lineHeight: "1.3em" }}>
-          This globe shows high-altitude balloons tracked over the past 24h.
+          This globe shows high-altitude balloons tracked over the past 24h and updates every 10 minutes.
           Click arcs/points for wind conditions at their altitude.
         </p>
 
