@@ -50,9 +50,10 @@ npm run preview
 ## 🛠 Project Structure
 
 ```
+api/
+  windborne.js            <- API serverless function
 public/
   weather-balloon.png     <- favicon / tab logo
-  api/windborne/          <- balloon flight JSON files
 src/
   App.jsx                 <- main app logic
   main.jsx                <- React entry point
