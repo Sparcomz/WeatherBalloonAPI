@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import Globe from "react-globe.gl";
 
-// Mapping function: altitude → nearest Open-Meteo pressure level
+// ---- Mapping function: altitude → nearest Open-Meteo pressure level ----
 function mapAltToPressure(altKm) {
   const levels = [
     { pressure: "1000hPa", alt: 0.11 },
@@ -39,11 +39,17 @@ function mapAltToPressure(altKm) {
 
 function App() {
   const globeEl = useRef();
-  const [balloons, setBalloons] = useState([]);
-  const [currentBalloons, setCurrentBalloons] = useState([]);
 
+  // ---- State ----
+  const [balloons, setBalloons] = useState([]);          // past 24h arcs
+  const [currentBalloons, setCurrentBalloons] = useState([]); // current positions
+  const [loading, setLoading] = useState(true);          // dynamic loader state
+
+  // ---- Fetch all data (arcs + current balloons) ----
   useEffect(() => {
     const fetchBalloonData = async () => {
+      setLoading(true);  // start loading
+
       let grouped = {};
 
       // ---- Load last 24 hours of arcs ----
@@ -92,8 +98,8 @@ function App() {
               <div style="background:white;color:black;padding:6px;border-radius:6px;
                           box-shadow:0 2px 6px rgba(0,0,0,0.3);font-size:12px">
                 <b>Balloon #${idx}</b><br/>
-                ${track[j].hour}h ago<br/>
-                Alt: ${track[j].alt?.toFixed(1)} km
+                Time: ${track[j].hour}h ago<br/>
+                Altitude: ${track[j].alt?.toFixed(1)} km
               </div>`
           });
         }
@@ -114,15 +120,21 @@ function App() {
               <div style="background:white;color:black;padding:6px;border-radius:6px;
                           box-shadow:0 2px 6px rgba(0,0,0,0.3);font-size:12px">
                 <b>Balloon #${idx}</b><br/>
-                Alt: ${p[2]?.toFixed(1)} km
+                Altitude: ${p[2]?.toFixed(1)} km
               </div>`
           }));
           setCurrentBalloons(curr);
         }
-      } catch(e){ console.log("Failed to fetch 00.json balloons", e); }
+      } catch(e){ 
+        console.log("Failed to fetch 00.json balloons", e); 
+      }
+
+      setLoading(false); // stop loading once done
     };
 
     fetchBalloonData();
+
+    // refresh every 10 minutes
     const interval = setInterval(fetchBalloonData, 10*60*1000);
     return () => clearInterval(interval);
   }, []);
@@ -130,7 +142,10 @@ function App() {
   // ---- Handler: enrich arc on click ----
   const handleArcClick = async (arc) => {
     try {
+      // map altitude → closest pressure level
       const pressure = mapAltToPressure(arc.alt);
+
+      // fetch forecast at that pressure
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${arc.endLat}&longitude=${arc.endLng}&hourly=windspeed_${pressure},winddirection_${pressure}&timezone=UTC`;
       const res = await fetch(url);
       const data = await res.json();
@@ -143,13 +158,13 @@ function App() {
           <div style="background:white;color:black;padding:6px;border-radius:6px;
                       box-shadow:0 2px 6px rgba(0,0,0,0.3);font-size:12px">
             <b>Balloon #${arc.balloonId}</b><br/>
-            ${arc.hour}h ago<br/>
-            Alt: ${arc.alt?.toFixed(1)} km<br/>
-            Pressure Level: ${pressure}<br/>
+            Time: ${arc.hour}h ago<br/>
+            Altitude: ${arc.alt?.toFixed(1)} km<br/>
+            Pressure: ${pressure}<br/>
             Wind: ${ws} km/h<br/>
-            Dir: ${wd}°
+            Direction: ${wd}°
           </div>`;
-        arc.stroke = 0.6;
+        arc.stroke = 0.6; // highlight clicked arc
         setBalloons(prev => [...prev]);
       }
     } catch (err) { console.log("Arc weather fetch failed", err); }
@@ -158,7 +173,9 @@ function App() {
   // ---- Handler: enrich point on click ----
   const handlePointClick = async (point) => {
     try {
+      // map altitude → closest pressure level
       const pressure = mapAltToPressure(point.alt);
+
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${point.lat}&longitude=${point.lon}&hourly=windspeed_${pressure},winddirection_${pressure}&timezone=UTC`;
       const res = await fetch(url);
       const data = await res.json();
@@ -171,17 +188,17 @@ function App() {
           <div style="background:white;color:black;padding:6px;border-radius:6px;
                       box-shadow:0 2px 6px rgba(0,0,0,0.3);font-size:12px">
             <b>Balloon #${point.balloonId}</b><br/>
-            Alt: ${point.alt?.toFixed(1)} km<br/>
-            Pressure Level: ${pressure}<br/>
+            Altitude: ${point.alt?.toFixed(1)} km<br/>
+            Pressure: ${pressure}<br/>
             Wind: ${ws} km/h<br/>
-            Dir: ${wd}°
+            Direction: ${wd}°
           </div>`;
         setCurrentBalloons(prev => [...prev]);
       }
     } catch (err) { console.log("Point weather fetch failed", err); }
   };
 
-  // ---- Center on load ----
+  // ---- Center globe on first load ----
   useEffect(() => {
     if (globeEl.current) {
       globeEl.current.pointOfView({lat:20,lng:0,altitude:2.5});
@@ -189,36 +206,113 @@ function App() {
   }, []);
 
   return (
-    <div style={{width:"100vw",height:"100vh"}}>
+    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+
+      {/* ---- Fullscreen Loader Overlay ---- */}
+      {loading && (
+        <div style={{
+          position: "absolute",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.6)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 9999,
+          color: "#fff",
+          fontFamily: "sans-serif"
+        }}>
+          {/* Circular spinner */}
+          <div style={{
+            width: "40px",
+            height: "40px",
+            border: "4px solid #fff",
+            borderTop: "4px solid transparent",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+            marginBottom: "12px"
+          }} />
+          Waiting to populate the globe with data...
+        </div>
+      )}
+
+      {/* ---- Top-left intro + legend card ---- */}
+      <div
+        style={{
+          position: "absolute",
+          top: "12px",
+          left: "12px",
+          background: "rgba(255, 255, 255, 0.9)",
+          padding: "12px 16px",
+          borderRadius: "8px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+          maxWidth: "220px",
+          fontFamily: "sans-serif",
+          fontSize: "13px",
+          color: "#111",
+          zIndex: 10
+        }}
+      >
+        <h3 style={{ margin: "0 0 6px 0", fontSize: "14px" }}>🎈 WindBorne Balloon Tracker</h3>
+        <p style={{ margin: "0 0 8px 0", lineHeight: "1.3em" }}>
+          This globe shows high-altitude balloons tracked over the past 24h.
+          Click arcs/points for wind conditions at their altitude.
+        </p>
+
+        {/* Only show legend once balloons loaded */}
+        {!loading && (
+          <div>
+            <strong>Legend:</strong>
+            <div style={{ display: "flex", alignItems: "center", marginTop: "4px" }}>
+              <span style={{ color: "#f00", fontWeight: "bold", marginRight: "6px" }}>●</span>
+              <span>Current balloons</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", marginTop: "4px" }}>
+              <span style={{ color: "#3b82f6", fontWeight: "bold", marginRight: "6px" }}>━</span>
+              <span>Past flight paths</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ---- Globe fills entire screen ---- */}
       <Globe
         ref={globeEl}
         globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
         bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
 
-        // Arcs
+        // ---- Arcs (balloon tracks) ----
         arcsData={balloons}
-        arcStartLat={d=>d.startLat}
-        arcStartLng={d=>d.startLng}
-        arcEndLat={d=>d.endLat}
-        arcEndLng={d=>d.endLng}
-        arcColor={d=>d.color}
+        arcStartLat={d => d.startLat}
+        arcStartLng={d => d.startLng}
+        arcEndLat={d => d.endLat}
+        arcEndLng={d => d.endLng}
+        arcColor={d => d.color}
         arcAltitude={0}
-        arcStroke={d=>d.stroke}
-        arcLabel={d=>d.label}
+        arcStroke={d => d.stroke}
+        arcLabel={d => d.label}
         onArcClick={handleArcClick}
 
-        // Points
+        // ---- Points (current balloons) ----
         pointsData={currentBalloons}
-        pointLat={d=>d.lat}
-        pointLng={d=>d.lon}
+        pointLat={d => d.lat}
+        pointLng={d => d.lon}
         pointAltitude={0.01}
-        pointColor={()=>"#ff0000ff"}
-        pointLabel={d=>d.label}
+        pointColor={() => "#ff0000"}
+        pointLabel={d => d.label}
         pointRadius={0.5}
         pointResolution={12}
         onPointClick={handlePointClick}
       />
+
+      {/* ---- Spinner animation CSS ---- */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
