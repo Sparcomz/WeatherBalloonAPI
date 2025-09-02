@@ -84,4 +84,4 @@ Open‑Meteo pressure levels are mapped to approximate balloon altitudes.
 
 ## 📃 License
 
-MIT © 2024 Sparcom
+MIT © 2025 Sparcom
